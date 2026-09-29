@@ -1,3 +1,5 @@
 <div class="toasts" id="toasts" role="status" aria-live="polite">
-  {# Phase 1: Django messages are rendered here as toasts. #}
+  {% for message in messages %}
+    <div class="toast{% if message.tags %} toast--{{ message.tags }}{% endif %}">{{ message }}</div>
+  {% endfor %}
 </div>

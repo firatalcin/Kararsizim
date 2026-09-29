@@ -641,7 +641,7 @@ Prototipte **yapılmayacak**, sonraki adımlar için fikirler:
 Claude Code her faz bitiminde burayı günceller.
 
 - [x] Faz 0 — İskelet ve temel ayarlar (2026-09-26)
-- [ ] Faz 1 — Hesaplar
+- [x] Faz 1 — Hesaplar (2026-09-29)
 - [ ] Faz 2 — Anket oluşturma ve listeleme
 - [ ] Faz 3 — Oylama ve sonuçlar
 - [ ] Faz 4 — Arayüz cilası
@@ -656,3 +656,7 @@ Claude Code her faz bitiminde burayı günceller.
 - 2026-09-29: Kullanıcının isteğiyle git deposu başlatıldı (`main` dalı); commit yalnızca kullanıcı isteyince atılır.
 - 2026-09-26: Kullanıcı adı format ve yasaklı ad doğrulayıcıları modelde tanımlı (`accounts/models.py`); Faz 1 formları bunları otomatik kullanır.
 - 2026-09-26: Faz 0'daki geçici ana sayfa `polls.views.home`; Faz 2'de akış ile değiştirilecek. `config/asgi.py` kaldırıldı (Vercel WSGI kullanıyor).
+- 2026-09-29: Form hata metinleri için `--pink-ink: #C8105F` eklendi; `--pink` beyaz zeminde WCAG AA'yı (4.5:1) geçmiyor. Input kenarlığı hatada yine `--pink`.
+- 2026-09-29: Giriş/kayıt/çıkış fonksiyon view'larıyla yazıldı (`accounts/views.py`); `next` kontrolü ortak `get_safe_next_url()` ile. URL adları: `accounts:register`, `accounts:login`, `accounts:logout`. `LOGIN_URL = "/giris/"`.
+- 2026-09-29: Toast'lar JS olmadan da CSS animasyonuyla ~3 sn sonra kaybolur; `main.js` DOM'dan kaldırır ve Faz 3 için `kz.toast(text, kind)` yardımcısını sağlar.
+- 2026-09-29: Navbar'daki "+ Anket oluştur" `/anket/yeni/` adresine gidiyor; bu sayfa Faz 2'ye kadar 404 döner.

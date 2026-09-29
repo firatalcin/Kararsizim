@@ -1,10 +1,22 @@
-{% load static %}<header class="navbar">
+<header class="navbar">
   <div class="container navbar__inner">
     <a href="/" class="logo" aria-label="Kararsızım ana sayfa">
       <span class="logo__word">Kararsızım</span><span class="logo__mark" aria-hidden="true">?</span>
     </a>
     <nav class="navbar__actions" aria-label="Hesap">
-      {# Phase 1: login / register links or user menu go here. #}
+      {% if user.is_authenticated %}
+        <a href="/anket/yeni/" class="btn btn--primary btn--sm" aria-label="Anket oluştur">
+          <span aria-hidden="true">+</span><span class="hide-sm">Anket oluştur</span>
+        </a>
+        <span class="navbar__user" title="@{{ user.username }}">@{{ user.username }}</span>
+        <form method="post" action="{% url 'accounts:logout' %}" class="navbar__logout">
+          {% csrf_token %}
+          <button type="submit" class="link-button">Çıkış</button>
+        </form>
+      {% else %}
+        <a href="{% url 'accounts:login' %}{% if request.path != '/' and request.path != '/giris/' and request.path != '/kayit/' %}?next={{ request.get_full_path|urlencode }}{% endif %}" class="navbar__link">Giriş yap</a>
+        <a href="{% url 'accounts:register' %}" class="btn btn--primary btn--sm">Kayıt ol</a>
+      {% endif %}
     </nav>
   </div>
 </header>
