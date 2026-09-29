@@ -1,0 +1,351 @@
+/* ==========================================================================
+   Kararsızım — main stylesheet
+   Design tokens first, then reset, base, layout and components.
+   ========================================================================== */
+
+:root {
+  /* Zemin ve metin */
+  --bg: #FFF8F1;
+  --surface: #FFFFFF;
+  --ink: #1E1A2E;
+  --muted: #6D6880;
+  --line: #EDE6F5;
+
+  /* Vurgu renkleri */
+  --violet: #7C3AED;
+  --pink:   #FF3D8B;
+  --orange: #FF8A1F;
+  --teal:   #10B3A3;
+  --sky:    #2F9BFF;
+  --sun:    #FFC928;
+
+  /* Yumuşak tonlar */
+  --violet-soft: #F1E8FF;
+  --pink-soft:   #FFE6F0;
+  --orange-soft: #FFEEDD;
+  --teal-soft:   #DDF7F3;
+  --sky-soft:    #E2F0FF;
+
+  --radius-lg: 22px;
+  --radius-md: 14px;
+  --shadow-card: 0 8px 24px rgba(124, 58, 237, 0.08);
+  --shadow-pop: 0 4px 0 rgba(30, 26, 46, 0.9);
+
+  /* Typography */
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-body: "Plus Jakarta Sans", system-ui, sans-serif;
+
+  --container: 680px;
+  --gutter: 16px;
+}
+
+/* ---------- Reset ---------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+p,
+h1,
+h2,
+h3 {
+  overflow-wrap: break-word;
+}
+
+/* ---------- Base ---------- */
+
+body {
+  position: relative;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+h1 { font-size: clamp(28px, 6vw, 36px); }
+h2 { font-size: 22px; }
+h3 { font-size: 20px; }
+
+a {
+  color: var(--violet);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--violet);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Soft colour blobs behind everything ("ton" effect) */
+.bg-blobs {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(40vmax 40vmax at 8% 12%, rgba(255, 61, 139, 0.14), transparent 70%),
+    radial-gradient(45vmax 45vmax at 95% 20%, rgba(124, 58, 237, 0.13), transparent 70%),
+    radial-gradient(35vmax 35vmax at 60% 100%, rgba(255, 138, 31, 0.08), transparent 70%);
+  filter: blur(20px);
+}
+
+/* ---------- Layout ---------- */
+
+.container {
+  width: 100%;
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+main.container {
+  padding-block: 32px 64px;
+}
+
+/* ---------- Navbar ---------- */
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(255, 248, 241, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.navbar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 64px;
+}
+
+.navbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 2px;
+  color: var(--ink);
+  text-decoration: none;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+
+.logo__mark {
+  display: inline-block;
+  color: var(--pink);
+  transform: rotate(14deg) translateY(-2px);
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 20px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: var(--shadow-pop);
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+
+.btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(30, 26, 46, 0.9);
+}
+
+.btn--primary {
+  background: var(--violet);
+  color: #FFFFFF;
+}
+
+.btn--ghost {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---------- Cards ---------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+}
+
+/* ---------- Chips ---------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.chip::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.chip--violet { background: var(--violet-soft); }
+.chip--violet::before { background: var(--violet); }
+.chip--pink { background: var(--pink-soft); }
+.chip--pink::before { background: var(--pink); }
+.chip--orange { background: var(--orange-soft); }
+.chip--orange::before { background: var(--orange); }
+.chip--teal { background: var(--teal-soft); }
+.chip--teal::before { background: var(--teal); }
+.chip--sky { background: var(--sky-soft); }
+.chip--sky::before { background: var(--sky); }
+
+/* ---------- Hero (temporary home, error pages) ---------- */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding-block: 48px 24px;
+  text-align: center;
+}
+
+.hero__emoji {
+  font-size: 72px;
+  line-height: 1;
+}
+
+.hero__text {
+  max-width: 440px;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.demo-card {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 16px;
+  text-align: left;
+}
+
+.demo-card__question {
+  font-weight: 700;
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.demo-card__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- Toasts ---------- */
+
+.toasts {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .toasts {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: calc(100% - 2 * var(--gutter));
+    align-items: center;
+  }
+}
+
+/* ---------- Motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
