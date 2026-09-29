@@ -6,6 +6,7 @@ Locally, manage.py loads them from a .env file via python-dotenv.
 """
 
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
@@ -92,6 +93,11 @@ DATABASES = {
         conn_max_age=0,
     )
 }
+
+# Tests always run on local SQLite: they must not create a test database on
+# Supabase, whose pooler is not meant for that.
+if len(sys.argv) > 1 and sys.argv[1] == "test":
+    DATABASES["default"] = dj_database_url.parse(f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
 
 if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
     # Supabase transaction pooler: no server-side cursors, no prepared statements.
