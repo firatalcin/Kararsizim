@@ -31,7 +31,8 @@ class BaseOptionFormSet(BaseFormSet):
     def add_fields(self, form, index):
         super().add_fields(form, index)
         if index is not None:
-            form.fields["text"].widget.attrs["placeholder"] = f"{index + 1}. seçenek"
+            label = f"{index + 1}. seçenek"
+            form.fields["text"].widget.attrs.update({"placeholder": label, "aria-label": label})
 
     def clean(self):
         if any(self.errors):

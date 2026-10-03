@@ -27,6 +27,7 @@
       input.name = input.name.replace(/-(\d+|__prefix__)-/, "-" + index + "-");
       input.id = input.id.replace(/-(\d+|__prefix__)-/, "-" + index + "-");
       input.placeholder = index + 1 + ". seçenek";
+      input.setAttribute("aria-label", input.placeholder);
       row.querySelector("[data-remove-option]").hidden = all.length <= min;
     });
     totalForms.value = all.length;

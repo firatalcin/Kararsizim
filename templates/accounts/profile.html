@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}@{{ profile_user.username }} · Kararsızım{% endblock %}
+{% block meta_description %}@{{ profile_user.username }} kullanıcısının Kararsızım anketleri.{% endblock %}
+
+{% block content %}
+<section class="card profile">
+  <span class="avatar avatar--lg avatar--{{ profile_user.avatar_color }}" aria-hidden="true">{{ profile_user.username|first|upper }}</span>
+  <div>
+    <h1 class="profile__name">@{{ profile_user.username }}</h1>
+    <p class="profile__meta">
+      Katılma: {{ profile_user.date_joined|date:"F Y" }} · {{ page.paginator.count }} anket
+    </p>
+  </div>
+</section>
+
+{% if polls %}
+  <div class="poll-list">
+    {% for poll in polls %}
+      {% include "partials/_poll_card.html" with link_question=True %}
+    {% endfor %}
+  </div>
+  {% include "partials/_pagination.html" %}
+{% else %}
+  <section class="hero empty-state">
+    <div class="hero__emoji" aria-hidden="true">🌱</div>
+    {% if user.pk == profile_user.pk %}
+      <p class="hero__text">Henüz anket açmadın. Kararsız kaldığın ilk şeyi sor!</p>
+      <a href="{% url 'polls:create' %}" class="btn btn--primary">Anket oluştur</a>
+    {% else %}
+      <p class="hero__text">@{{ profile_user.username }} henüz anket açmamış.</p>
+    {% endif %}
+  </section>
+{% endif %}
+{% endblock %}

@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -47,6 +48,15 @@ def feed(request):
     page = Paginator(polls_with_counts(), POLLS_PER_PAGE).get_page(request.GET.get("sayfa"))
     polls = prepare_cards(list(page.object_list), request)
     return render(request, "polls/feed.html", {"page": page, "polls": polls})
+
+
+def profile(request, username):
+    # Usernames are unique case-insensitively, so /u/Ali/ and /u/ali/ are the same profile.
+    author = get_object_or_404(get_user_model(), username__iexact=username)
+    paginator = Paginator(polls_with_counts().filter(author=author), POLLS_PER_PAGE)
+    page = paginator.get_page(request.GET.get("sayfa"))
+    polls = prepare_cards(list(page.object_list), request)
+    return render(request, "accounts/profile.html", {"profile_user": author, "page": page, "polls": polls})
 
 
 def poll_detail(request, pk):

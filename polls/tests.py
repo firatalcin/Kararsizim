@@ -262,6 +262,70 @@ class ModelConstraintTests(TestCase):
         self.assertEqual([o.color for o in self.poll.options.all()], ["violet", "pink"])
 
 
+class ProfileTests(TestCase):
+    def setUp(self):
+        self.ali = make_user("Ali")
+        make_poll(self.ali, question="Ali'nin ilk anketi")
+        make_poll(make_user("veli"), question="Veli'nin anketi")
+
+    def test_profile_lists_only_users_polls_without_email(self):
+        response = self.client.get("/u/Ali/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "@Ali")
+        self.assertContains(response, "Ali&#x27;nin ilk anketi")
+        self.assertNotContains(response, "Veli&#x27;nin anketi")
+        self.assertContains(response, "1 anket")
+        self.assertContains(response, "Katılma: ")
+        self.assertNotContains(response, "@example.com")
+
+    def test_username_lookup_is_case_insensitive(self):
+        self.assertEqual(self.client.get("/u/ali/").context["profile_user"], self.ali)
+        self.assertEqual(self.client.get("/u/ALI/").context["profile_user"], self.ali)
+
+    def test_unknown_user_is_404(self):
+        self.assertEqual(self.client.get("/u/yokboylebiri/").status_code, 404)
+
+    def test_join_month_is_turkish(self):
+        self.ali.date_joined = self.ali.date_joined.replace(year=2026, month=9, day=15)
+        self.ali.save()
+        self.assertContains(self.client.get("/u/ali/"), "Katılma: Eylül 2026")
+
+    def test_empty_profile_message(self):
+        lonely = make_user("yalniz")
+        self.assertContains(self.client.get("/u/yalniz/"), "henüz anket açmamış")
+        self.client.force_login(lonely)
+        self.assertContains(self.client.get("/u/yalniz/"), "Henüz anket açmadın")
+
+    def test_navbar_links_to_own_profile(self):
+        self.client.force_login(self.ali)
+        self.assertContains(self.client.get("/"), 'class="navbar__user" href="/u/Ali/"')
+
+
+class PageMetaTests(TestCase):
+    def test_poll_detail_has_share_meta(self):
+        poll = make_poll(make_user(), question="Deniz mi, dağ mı?")
+        response = self.client.get(poll.get_absolute_url())
+        self.assertContains(response, '<meta property="og:title" content="Deniz mi, dağ mı?">', html=False)
+        self.assertContains(
+            response,
+            '<meta property="og:description" content="Sen olsan hangisini seçerdin? Kararsızım\'da oy ver.">',
+        )
+        self.assertContains(response, f'<meta property="og:url" content="http://testserver/anket/{poll.pk}/">')
+        self.assertContains(response, "<title>Deniz mi, dağ mı? · Kararsızım</title>")
+        # The question is the page's single h1 on the detail page.
+        self.assertContains(response, '<h1 class="poll-card__question">', count=1)
+
+    def test_skip_link_present(self):
+        self.assertContains(self.client.get("/"), '<a class="skip-link" href="#main">İçeriğe geç</a>')
+
+    def test_error_pages_render_without_context(self):
+        from django.views.defaults import page_not_found, server_error
+
+        request = RequestFactory().get("/bozuk/")
+        self.assertContains(server_error(request), "Bir şeyler ters gitti", status_code=500)
+        self.assertContains(page_not_found(request, Exception()), "kararsız kalıp gitmiş", status_code=404)
+
+
 class PercentagesTests(TestCase):
     def test_no_votes_is_all_zero(self):
         self.assertEqual(percentages([0, 0, 0]), [0, 0, 0])
@@ -437,6 +501,11 @@ class CardStateTests(TestCase):
         self.assertContains(response, 'name="option_id"')
         self.assertContains(response, "%100")
         self.assertContains(response, "Sen de oy verebilirsin")
+
+    def test_card_has_copy_link_and_profile_link(self):
+        response = self.client.get("/")
+        self.assertContains(response, f'href="/anket/{self.poll.pk}/" class="poll-card__share" data-copy-link')
+        self.assertContains(response, 'href="/u/sahip/"')
 
     def test_feed_query_count_constant_for_voter_with_cookie(self):
         self.client.post(reverse("polls:vote", args=[self.poll.pk]), {"option_id": self.sinema.pk})

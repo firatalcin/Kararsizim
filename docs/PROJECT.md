@@ -644,7 +644,7 @@ Claude Code her faz bitiminde burayı günceller.
 - [x] Faz 1 — Hesaplar (2026-09-29)
 - [x] Faz 2 — Anket oluşturma ve listeleme (2026-10-03)
 - [x] Faz 3 — Oylama ve sonuçlar (2026-10-03)
-- [ ] Faz 4 — Arayüz cilası
+- [x] Faz 4 — Arayüz cilası (2026-10-03)
 - [ ] Faz 5 — Supabase + Vercel yayını
 
 ### Notlar / alınan kararlar
@@ -673,4 +673,8 @@ Claude Code her faz bitiminde burayı günceller.
 - 2026-10-03: Yüzdeler `services.percentages()` ile "en büyük kalan" yöntemiyle hesaplanır; toplam her zaman tam 100 (0 oyda hepsi 0). Arayüzde Türkçe yazımla `%54`.
 - 2026-10-03: Geçersiz/yabancı `option_id` → `InvalidOption` (400); çift oy → `AlreadyVoted` (409, güncel sonuçlar + `voted_option_id` ile). JS kapalıyken yönlendirme `next` (güvenli) veya detay sayfasına, `#anket-<id>` çapasıyla.
 - 2026-10-03: Sonuç çubuğu seçeneğin renginde ama %35 opaklıkta; `--ink` metin üzerinde okunur kalsın diye (tam renkli çubukta kontrast AA'nın altında kalıyor).
+- 2026-10-03: Profil view'ı `polls.views.profile` (URL adı `polls:profile`), şablonu `accounts/profile.html`. `accounts.views` → `polls.views` döngüsel import'unu önlemek için polls'ta.
+- 2026-10-03: "Linki kopyala" JS'siz durumda anket sayfasına giden normal bir link; JS ile `navigator.clipboard` → yoksa `navigator.share` → yoksa `prompt` ile link seçimi.
+- 2026-10-03: Logodaki "?" ve favicon artık fonttan bağımsız SVG çizim. Detay sayfasında soru `h1` (kartın `question_tag` parametresi). "İçeriğe geç" bağlantısı eklendi. Seçenek kutularına `aria-label`.
+- 2026-10-03: Erişilebilirlik kontrolü Lighthouse'un kullandığı axe-core ile yapıldı (WCAG 2.1 A/AA + best-practice): akış, detay, profil, kayıt (hatalı form), anket oluştur, silme onayı → 0 ihlal. 360/390/768/masaüstü genişliklerinde yatay kaydırma yok, dokunma hedefleri ≥44px. Gerçek Lighthouse puanı yerelde Chrome DevTools'tan ölçülmeli.
 - 2026-10-03: Geliştirmede tarayıcı `main.js`'in eski sürümünü önbellekten kullanabilir (runserver önbellek kırmıyor); JS değişikliğinden sonra sert yenileme gerekir. Prod'da WhiteNoise manifest dosya adları önbelleği kendiliğinden kırar.

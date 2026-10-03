@@ -1,5 +1,5 @@
 // Kararsizim front-end helpers.
-// Toasts, voting via fetch. Phase 4 adds copy-link.
+// Toasts, voting via fetch, copy-link.
 (function () {
   "use strict";
 
@@ -66,7 +66,10 @@
     const bars = [];
     data.options.forEach(function (option) {
       const chosen = option.id === data.voted_option_id;
-      const item = el("li", "option option--" + colors[option.id] + " option--result" + (chosen ? " option--chosen" : ""));
+      const item = el(
+        "li",
+        "option option--" + colors[option.id] + " option--result" + (chosen ? " option--chosen option--pop" : "")
+      );
       const bar = el("span", "option__bar");
       bar.setAttribute("aria-hidden", "true");
       item.appendChild(bar);
@@ -134,6 +137,33 @@
     } else {
       buttons.forEach(function (b) { b.disabled = false; });
       window.kz.toast((data && data.error) || "Bir şeyler ters gitti, tekrar dener misin?", "error");
+    }
+  });
+
+  // ---------- Copy link ----------
+  // The link points at the poll page, so without JS it still works as a shareable link.
+  document.addEventListener("click", async function (event) {
+    const link = event.target.closest("[data-copy-link]");
+    if (!link) {
+      return;
+    }
+    event.preventDefault();
+    const url = new URL(link.getAttribute("href"), window.location.href).href;
+
+    try {
+      // Missing outside secure contexts (plain http on a non-localhost host) → throws.
+      await navigator.clipboard.writeText(url);
+      window.kz.toast("Link kopyalandı!", "success");
+    } catch (error) {
+      if (navigator.share) {
+        try {
+          await navigator.share({ url: url, title: document.title });
+        } catch (shareError) {
+          // The user closed the share sheet; nothing to do.
+        }
+      } else {
+        window.prompt("Linki kopyala:", url);
+      }
     }
   });
 })();

@@ -13,14 +13,7 @@
       {% include "partials/_poll_card.html" with link_question=True %}
     {% endfor %}
   </div>
-
-  {% if page.has_other_pages %}
-    <nav class="pagination" aria-label="Sayfalar">
-      {% if page.has_previous %}<a class="btn btn--sm" href="?sayfa={{ page.previous_page_number }}" rel="prev">← Daha yeni</a>{% endif %}
-      <span class="pagination__current">Sayfa {{ page.number }} / {{ page.paginator.num_pages }}</span>
-      {% if page.has_next %}<a class="btn btn--sm" href="?sayfa={{ page.next_page_number }}" rel="next">Daha eski →</a>{% endif %}
-    </nav>
-  {% endif %}
+  {% include "partials/_pagination.html" %}
 {% else %}
   <section class="hero empty-state">
     <div class="hero__emoji" aria-hidden="true">🤔</div>
