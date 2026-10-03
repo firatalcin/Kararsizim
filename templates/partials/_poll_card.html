@@ -1,6 +1,6 @@
 {% load humanize %}
-{# One poll. Expects `poll` (from polls_with_counts()); `link_question` makes the question a link to the detail page. #}
-<article class="card poll-card">
+{# One poll. Expects `poll` from polls_with_counts() + prepare_cards(); `link_question` links the question to the detail page. #}
+<article class="card poll-card" id="anket-{{ poll.pk }}">
   <header class="poll-card__meta">
     <span class="avatar avatar--{{ poll.author.avatar_color }}" aria-hidden="true">{{ poll.author.username|first|upper }}</span>
     <span class="poll-card__author">@{{ poll.author.username }}</span>
@@ -12,15 +12,33 @@
   </h2>
   {% if poll.description %}<p class="poll-card__description">{{ poll.description }}</p>{% endif %}
 
-  <ul class="options" aria-label="Seçenekler">
-    {% for option in poll.options.all %}
-      <li class="option option--{{ option.color }}">{{ option.text }}</li>
-    {% endfor %}
-  </ul>
+  {% if poll.can_vote %}
+    {% if poll.is_owner %}<p class="poll-card__hint">Anket senin, sonuçları görüyorsun. Sen de oy verebilirsin 👇</p>{% endif %}
+    <form method="post" action="{% url 'polls:vote' poll.pk %}" class="options" data-vote-form>
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      {% for option in poll.options.all %}
+        <button type="submit" name="option_id" value="{{ option.pk }}"
+                class="option option--{{ option.color }}{% if poll.show_results %} option--result{% endif %}"
+                style="--percent: {{ option.percent }}%" data-option-id="{{ option.pk }}" data-color="{{ option.color }}">
+          {% include "partials/_option_body.html" %}
+        </button>
+      {% endfor %}
+    </form>
+  {% else %}
+    <ul class="options" aria-label="Sonuçlar">
+      {% for option in poll.options.all %}
+        <li class="option option--{{ option.color }} option--result{% if option.pk == poll.voted_option_id %} option--chosen{% endif %}"
+            style="--percent: {{ option.percent }}%">
+          {% include "partials/_option_body.html" %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
 
   <footer class="poll-card__footer">
-    <span class="poll-card__votes">{{ poll.total_votes }} oy</span>
-    {% if user.is_authenticated and user.pk == poll.author_id %}
+    <span class="poll-card__votes" data-total-votes>{{ poll.total_votes }} oy</span>
+    {% if poll.is_owner %}
       <a href="{% url 'polls:delete' poll.pk %}" class="poll-card__action">Sil</a>
     {% endif %}
   </footer>

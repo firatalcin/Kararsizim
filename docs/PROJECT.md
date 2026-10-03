@@ -643,7 +643,7 @@ Claude Code her faz bitiminde burayı günceller.
 - [x] Faz 0 — İskelet ve temel ayarlar (2026-09-26)
 - [x] Faz 1 — Hesaplar (2026-09-29)
 - [x] Faz 2 — Anket oluşturma ve listeleme (2026-10-03)
-- [ ] Faz 3 — Oylama ve sonuçlar
+- [x] Faz 3 — Oylama ve sonuçlar (2026-10-03)
 - [ ] Faz 4 — Arayüz cilası
 - [ ] Faz 5 — Supabase + Vercel yayını
 
@@ -669,3 +669,8 @@ Claude Code her faz bitiminde burayı günceller.
 - 2026-10-03: Option'a ek DB kısıtı: `position < 5` (`option_position_range`). Avatar rengi `User.avatar_color` (kullanıcı adının `crc32`'si; süreçler arasında sabit).
 - 2026-10-03: JS kapalıyken anket formu yalnızca sunucunun çizdiği 2 seçenek satırıyla çalışır (daha fazla satır `poll-form.js` ile eklenir); 2–5 kuralı yine sunucuda doğrulanır.
 - 2026-10-03: Anket silme `@login_required`: anonim kullanıcı girişe yönlenir, başkasının anketi 404.
+- 2026-10-03: `voter.py` API'si bölüm 5'ten biraz farklı: token oy kaydedilmeden önce gerektiği için `ensure_voter_token(request) -> (token, is_new)` + `set_voter_cookie(response, token)`. Yeni çerez yalnızca oy **başarıyla** kaydedilince yazılır (400/409'da yazılmaz).
+- 2026-10-03: Yüzdeler `services.percentages()` ile "en büyük kalan" yöntemiyle hesaplanır; toplam her zaman tam 100 (0 oyda hepsi 0). Arayüzde Türkçe yazımla `%54`.
+- 2026-10-03: Geçersiz/yabancı `option_id` → `InvalidOption` (400); çift oy → `AlreadyVoted` (409, güncel sonuçlar + `voted_option_id` ile). JS kapalıyken yönlendirme `next` (güvenli) veya detay sayfasına, `#anket-<id>` çapasıyla.
+- 2026-10-03: Sonuç çubuğu seçeneğin renginde ama %35 opaklıkta; `--ink` metin üzerinde okunur kalsın diye (tam renkli çubukta kontrast AA'nın altında kalıyor).
+- 2026-10-03: Geliştirmede tarayıcı `main.js`'in eski sürümünü önbellekten kullanabilir (runserver önbellek kırmıyor); JS değişikliğinden sonra sert yenileme gerekir. Prod'da WhiteNoise manifest dosya adları önbelleği kendiliğinden kırar.

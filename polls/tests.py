@@ -1,10 +1,12 @@
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, connection
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from .models import Option, Poll, Vote
+from .services import build_results, percentages
+from .voter import COOKIE_NAME, get_voter_token
 
 User = get_user_model()
 
@@ -258,3 +260,189 @@ class ModelConstraintTests(TestCase):
 
     def test_option_colors_follow_position(self):
         self.assertEqual([o.color for o in self.poll.options.all()], ["violet", "pink"])
+
+
+class PercentagesTests(TestCase):
+    def test_no_votes_is_all_zero(self):
+        self.assertEqual(percentages([0, 0, 0]), [0, 0, 0])
+
+    def test_equal_votes(self):
+        self.assertEqual(percentages([5, 5]), [50, 50])
+
+    def test_thirds_sum_to_exactly_100(self):
+        result = percentages([1, 1, 1])
+        self.assertEqual(sum(result), 100)
+        self.assertEqual(sorted(result), [33, 33, 34])
+
+    def test_never_exceeds_100(self):
+        for counts in ([1, 1, 1, 1, 1, 1], [2, 1], [1, 2, 3, 4, 5], [7, 0, 0], [1, 1, 1, 1, 3]):
+            with self.subTest(counts=counts):
+                self.assertEqual(sum(percentages(counts)), 100)
+
+    def test_build_results_shape(self):
+        poll = make_poll(make_user(), options=("A", "B"))
+        a, b = poll.options.all()
+        Vote.objects.create(poll=poll, option=a, voter_token="1")
+        Vote.objects.create(poll=poll, option=a, voter_token="2")
+        Vote.objects.create(poll=poll, option=b, voter_token="3")
+        self.assertEqual(
+            build_results(poll),
+            {
+                "poll_id": poll.pk,
+                "total_votes": 3,
+                "options": [
+                    {"id": a.pk, "text": "A", "votes": 2, "percent": 67},
+                    {"id": b.pk, "text": "B", "votes": 1, "percent": 33},
+                ],
+            },
+        )
+
+
+class VoteTests(TestCase):
+    def setUp(self):
+        self.author = make_user("sahip")
+        self.poll = make_poll(self.author, options=("Sinema", "Restoran"))
+        self.sinema, self.restoran = self.poll.options.all()
+        self.url = reverse("polls:vote", args=[self.poll.pk])
+
+    def vote(self, option_id, client=None, json=True):
+        headers = {"Accept": "application/json"} if json else {}
+        return (client or self.client).post(self.url, {"option_id": option_id}, headers=headers)
+
+    def test_anonymous_vote_sets_cookie_and_token(self):
+        response = self.vote(self.sinema.pk)
+        self.assertEqual(response.status_code, 200)
+        cookie = response.cookies[COOKIE_NAME]
+        self.assertTrue(cookie["httponly"])
+        self.assertEqual(cookie["samesite"], "Lax")
+
+        vote = Vote.objects.get()
+        self.assertIsNone(vote.user)
+        # Read the cookie back the way the app does.
+        request = RequestFactory().get("/")
+        request.COOKIES[COOKIE_NAME] = self.client.cookies[COOKIE_NAME].value
+        self.assertEqual(get_voter_token(request), vote.voter_token)
+
+        data = response.json()
+        self.assertEqual(data["ok"], True)
+        self.assertEqual(data["poll_id"], self.poll.pk)
+        self.assertEqual(data["total_votes"], 1)
+        self.assertEqual(data["voted_option_id"], self.sinema.pk)
+        self.assertEqual([o["percent"] for o in data["options"]], [100, 0])
+
+    def test_same_cookie_cannot_vote_twice(self):
+        self.vote(self.sinema.pk)
+        response = self.vote(self.restoran.pk)
+        self.assertEqual(response.status_code, 409)
+        data = response.json()
+        self.assertEqual(data["error"], "Bu ankete zaten oy verdin.")
+        self.assertEqual(data["voted_option_id"], self.sinema.pk)
+        self.assertEqual(data["total_votes"], 1)
+        self.assertEqual(Vote.objects.count(), 1)
+
+    def test_tampered_cookie_is_treated_as_new_visitor(self):
+        self.client.cookies[COOKIE_NAME] = "sahte-deger"
+        response = self.vote(self.sinema.pk)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotEqual(Vote.objects.get().voter_token, "sahte-deger")
+
+    def test_member_vote_uses_user_not_cookie(self):
+        user = make_user("uye")
+        self.client.force_login(user)
+        response = self.vote(self.restoran.pk)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(COOKIE_NAME, response.cookies)
+        vote = Vote.objects.get()
+        self.assertEqual(vote.user, user)
+        self.assertIsNone(vote.voter_token)
+
+        self.assertEqual(self.vote(self.sinema.pk).status_code, 409)
+        # Same member from another browser.
+        other_browser = self.client_class()
+        other_browser.force_login(user)
+        self.assertEqual(self.vote(self.sinema.pk, client=other_browser).status_code, 409)
+        self.assertEqual(Vote.objects.count(), 1)
+
+    def test_owner_can_vote_on_own_poll(self):
+        self.client.force_login(self.author)
+        self.assertEqual(self.vote(self.sinema.pk).status_code, 200)
+
+    def test_option_from_another_poll_is_rejected(self):
+        other = make_poll(self.author, question="Başka bir anket", options=("X", "Y"))
+        response = self.vote(other.options.first().pk)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"ok": False, "error": "Geçersiz seçenek."})
+        self.assertNotIn(COOKIE_NAME, response.cookies)
+        self.assertFalse(Vote.objects.exists())
+
+    def test_garbage_option_is_rejected(self):
+        for option_id in ["", "abc", "1.5", "-1"]:
+            with self.subTest(option_id=option_id):
+                self.assertEqual(self.vote(option_id).status_code, 400)
+        self.assertEqual(self.client.post(self.url, headers={"Accept": "application/json"}).status_code, 400)
+
+    def test_get_not_allowed(self):
+        self.assertEqual(self.client.get(self.url).status_code, 405)
+
+    def test_missing_poll_is_404(self):
+        response = self.client.post(reverse("polls:vote", args=[999]), {"option_id": self.sinema.pk})
+        self.assertEqual(response.status_code, 404)
+
+    def test_json_never_contains_email(self):
+        self.client.force_login(make_user("uye"))
+        for response in (self.vote(self.sinema.pk), self.vote(self.sinema.pk)):
+            self.assertNotIn(b"email", response.content)
+            self.assertNotIn(b"@example.com", response.content)
+
+    def test_without_js_redirects_with_message(self):
+        response = self.vote(self.sinema.pk, json=False)
+        self.assertRedirects(response, f"/anket/{self.poll.pk}/#anket-{self.poll.pk}", fetch_redirect_response=False)
+        page = self.client.get(self.poll.get_absolute_url())
+        self.assertContains(page, "Oyun kaydedildi!")
+        self.assertContains(page, "option--chosen")
+
+    def test_without_js_redirects_to_safe_next_only(self):
+        response = self.client.post(self.url, {"option_id": self.sinema.pk, "next": "/?sayfa=2"})
+        self.assertRedirects(response, f"/?sayfa=2#anket-{self.poll.pk}", fetch_redirect_response=False)
+        response = self.client.post(self.url, {"option_id": self.sinema.pk, "next": "https://evil.example.com/"})
+        self.assertRedirects(response, f"/anket/{self.poll.pk}/#anket-{self.poll.pk}", fetch_redirect_response=False)
+        self.assertContains(self.client.get("/"), "Bu ankete zaten oy verdin.")
+
+
+class CardStateTests(TestCase):
+    def setUp(self):
+        self.author = make_user("sahip")
+        self.poll = make_poll(self.author, options=("Sinema", "Restoran"))
+        self.sinema = self.poll.options.first()
+        Vote.objects.create(poll=self.poll, option=self.sinema, voter_token="baskasi")
+
+    def test_not_voted_sees_buttons_without_results(self):
+        response = self.client.get(self.poll.get_absolute_url())
+        self.assertContains(response, 'name="option_id"')
+        self.assertNotContains(response, "option__percent")
+
+    def test_voted_sees_results_and_check(self):
+        self.client.post(reverse("polls:vote", args=[self.poll.pk]), {"option_id": self.sinema.pk})
+        for url in (self.poll.get_absolute_url(), "/"):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertNotContains(response, 'name="option_id"')
+                self.assertContains(response, "option--chosen")
+                self.assertContains(response, "%100")
+                self.assertContains(response, "2 oy")
+
+    def test_owner_sees_results_and_can_still_vote(self):
+        self.client.force_login(self.author)
+        response = self.client.get(self.poll.get_absolute_url())
+        self.assertContains(response, 'name="option_id"')
+        self.assertContains(response, "%100")
+        self.assertContains(response, "Sen de oy verebilirsin")
+
+    def test_feed_query_count_constant_for_voter_with_cookie(self):
+        self.client.post(reverse("polls:vote", args=[self.poll.pk]), {"option_id": self.sinema.pk})
+        with CaptureQueriesContext(connection) as queries:
+            self.client.get("/")
+        for i in range(10):
+            make_poll(self.author, question=f"Ek anket {i}", options=("Bir", "İki"))
+        with self.assertNumQueries(len(queries)):
+            self.client.get("/")

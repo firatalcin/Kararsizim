@@ -1,5 +1,5 @@
 // Kararsizim front-end helpers.
-// Phase 3 adds voting via fetch, Phase 4 adds copy-link.
+// Toasts, voting via fetch. Phase 4 adds copy-link.
 (function () {
   "use strict";
 
@@ -40,4 +40,100 @@
   };
 
   document.querySelectorAll("#toasts .toast").forEach(scheduleRemoval);
+
+  // ---------- Voting ----------
+  // Progressive enhancement: the vote form posts normally without JS; with JS we
+  // post via fetch and turn the card into its results view in place.
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    node.className = className;
+    if (text !== undefined) {
+      node.textContent = text;
+    }
+    return node;
+  }
+
+  // Mirrors the results state of partials/_poll_card.html + _option_body.html.
+  function renderResults(form, data) {
+    const colors = {};
+    form.querySelectorAll("[data-option-id]").forEach(function (button) {
+      colors[button.dataset.optionId] = button.dataset.color;
+    });
+
+    const list = el("ul", "options");
+    list.setAttribute("aria-label", "Sonuçlar");
+    const bars = [];
+    data.options.forEach(function (option) {
+      const chosen = option.id === data.voted_option_id;
+      const item = el("li", "option option--" + colors[option.id] + " option--result" + (chosen ? " option--chosen" : ""));
+      const bar = el("span", "option__bar");
+      bar.setAttribute("aria-hidden", "true");
+      item.appendChild(bar);
+      item.appendChild(el("span", "option__text", option.text));
+      if (chosen) {
+        const check = el("span", "option__check", "✓");
+        check.setAttribute("aria-label", "Senin oyun");
+        item.appendChild(check);
+      }
+      item.appendChild(el("span", "option__percent", "%" + option.percent));
+      item.style.setProperty("--percent", "0%");
+      bars.push([item, option.percent]);
+      list.appendChild(item);
+    });
+
+    const card = form.closest(".poll-card");
+    const hint = card.querySelector(".poll-card__hint");
+    if (hint) {
+      hint.remove();
+    }
+    form.replaceWith(list);
+    card.querySelector("[data-total-votes]").textContent = data.total_votes + " oy";
+
+    // Grow the bars from 0 on the next frame so the CSS transition runs.
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        bars.forEach(function (pair) {
+          pair[0].style.setProperty("--percent", pair[1] + "%");
+        });
+      });
+    });
+  }
+
+  document.addEventListener("submit", async function (event) {
+    const form = event.target.closest("[data-vote-form]");
+    const button = event.submitter;
+    if (!form || !button || !button.dataset.optionId) {
+      return;
+    }
+    event.preventDefault();
+
+    const buttons = form.querySelectorAll("button");
+    buttons.forEach(function (b) { b.disabled = true; });
+
+    const body = new FormData(form);
+    body.set("option_id", button.value);
+
+    let data = null;
+    try {
+      const response = await fetch(form.action, {
+        method: "POST",
+        headers: { Accept: "application/json", "X-CSRFToken": window.kz.csrfToken() },
+        body: body,
+        credentials: "same-origin",
+      });
+      data = await response.json();
+    } catch (error) {
+      data = null;
+    }
+
+    if (data && data.options) {
+      // 200 (vote saved) or 409 (already voted): both carry fresh results.
+      renderResults(form, data);
+      window.kz.toast(data.ok ? "Oyun kaydedildi! ✨" : data.error, data.ok ? "success" : "warning");
+    } else {
+      buttons.forEach(function (b) { b.disabled = false; });
+      window.kz.toast((data && data.error) || "Bir şeyler ters gitti, tekrar dener misin?", "error");
+    }
+  });
 })();

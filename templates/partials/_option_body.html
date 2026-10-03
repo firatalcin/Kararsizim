@@ -1,0 +1,5 @@
+{# Inside of one option row; results parts only when poll.show_results. Mirrored by renderResults() in main.js. #}
+{% if poll.show_results %}<span class="option__bar" aria-hidden="true"></span>{% endif %}
+<span class="option__text">{{ option.text }}</span>
+{% if option.pk == poll.voted_option_id %}<span class="option__check" aria-label="Senin oyun">✓</span>{% endif %}
+{% if poll.show_results %}<span class="option__percent">%{{ option.percent }}</span>{% endif %}
