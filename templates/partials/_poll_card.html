@@ -1,0 +1,27 @@
+{% load humanize %}
+{# One poll. Expects `poll` (from polls_with_counts()); `link_question` makes the question a link to the detail page. #}
+<article class="card poll-card">
+  <header class="poll-card__meta">
+    <span class="avatar avatar--{{ poll.author.avatar_color }}" aria-hidden="true">{{ poll.author.username|first|upper }}</span>
+    <span class="poll-card__author">@{{ poll.author.username }}</span>
+    <span class="poll-card__time">· <time datetime="{{ poll.created_at|date:'c' }}">{{ poll.created_at|naturaltime }}</time></span>
+  </header>
+
+  <h2 class="poll-card__question">
+    {% if link_question %}<a href="{{ poll.get_absolute_url }}">{{ poll.question }}</a>{% else %}{{ poll.question }}{% endif %}
+  </h2>
+  {% if poll.description %}<p class="poll-card__description">{{ poll.description }}</p>{% endif %}
+
+  <ul class="options" aria-label="Seçenekler">
+    {% for option in poll.options.all %}
+      <li class="option option--{{ option.color }}">{{ option.text }}</li>
+    {% endfor %}
+  </ul>
+
+  <footer class="poll-card__footer">
+    <span class="poll-card__votes">{{ poll.total_votes }} oy</span>
+    {% if user.is_authenticated and user.pk == poll.author_id %}
+      <a href="{% url 'polls:delete' poll.pk %}" class="poll-card__action">Sil</a>
+    {% endif %}
+  </footer>
+</article>

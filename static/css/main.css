@@ -82,6 +82,11 @@ button {
   cursor: pointer;
 }
 
+/* Component display rules (e.g. .btn's inline-flex) must not override the hidden attribute. */
+[hidden] {
+  display: none !important;
+}
+
 p,
 h1,
 h2,
@@ -317,38 +322,7 @@ main.container {
   padding: 20px;
 }
 
-/* ---------- Chips ---------- */
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-weight: 500;
-  color: var(--ink);
-}
-
-.chip::before {
-  content: "";
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.chip--violet { background: var(--violet-soft); }
-.chip--violet::before { background: var(--violet); }
-.chip--pink { background: var(--pink-soft); }
-.chip--pink::before { background: var(--pink); }
-.chip--orange { background: var(--orange-soft); }
-.chip--orange::before { background: var(--orange); }
-.chip--teal { background: var(--teal-soft); }
-.chip--teal::before { background: var(--teal); }
-.chip--sky { background: var(--sky-soft); }
-.chip--sky::before { background: var(--sky); }
-
-/* ---------- Hero (temporary home, error pages) ---------- */
+/* ---------- Hero (empty state, error pages) ---------- */
 
 .hero {
   display: flex;
@@ -368,25 +342,6 @@ main.container {
   max-width: 440px;
   color: var(--muted);
   font-size: 18px;
-}
-
-.demo-card {
-  width: 100%;
-  max-width: 420px;
-  margin-top: 16px;
-  text-align: left;
-}
-
-.demo-card__question {
-  font-weight: 700;
-  font-size: 20px;
-  margin-bottom: 12px;
-}
-
-.demo-card__options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 /* ---------- Forms ---------- */
@@ -484,6 +439,261 @@ main.container {
 
 .auth__switch a {
   font-weight: 700;
+}
+
+.auth__card--wide {
+  max-width: 560px;
+}
+
+.btn--danger {
+  background: var(--pink);
+  color: var(--ink);
+}
+
+/* ---------- Feed ---------- */
+
+.page-title {
+  margin-bottom: 20px;
+}
+
+.join-band {
+  display: block;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--sun);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.join-band:hover {
+  text-decoration: underline;
+}
+
+.poll-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.pagination__current {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.back-link {
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+
+.empty-state {
+  padding-top: 24px;
+}
+
+/* ---------- Poll card ---------- */
+
+.poll-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.poll-card__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.poll-card__author {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 4px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.avatar--violet { background: var(--violet); color: #FFFFFF; }
+.avatar--pink { background: var(--pink); }
+.avatar--orange { background: var(--orange); }
+.avatar--teal { background: var(--teal); }
+.avatar--sky { background: var(--sky); }
+
+.poll-card__question {
+  font-size: clamp(20px, 5vw, 22px);
+}
+
+.poll-card__question a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.poll-card__question a:hover {
+  text-decoration: underline;
+}
+
+.poll-card__description {
+  margin-top: -4px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+}
+
+.option::before {
+  content: "";
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.option--violet { background: var(--violet-soft); }
+.option--violet::before { background: var(--violet); }
+.option--pink { background: var(--pink-soft); }
+.option--pink::before { background: var(--pink); }
+.option--orange { background: var(--orange-soft); }
+.option--orange::before { background: var(--orange); }
+.option--teal { background: var(--teal-soft); }
+.option--teal::before { background: var(--teal); }
+.option--sky { background: var(--sky-soft); }
+.option--sky::before { background: var(--sky); }
+
+.poll-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 4px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.poll-card__action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-left: auto;
+  color: var(--pink-ink);
+  font-weight: 700;
+}
+
+/* ---------- Poll form: option rows ---------- */
+
+.option-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.option-fields__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.option-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.option-row input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: 16px;
+}
+
+.option-row input:focus {
+  outline: none;
+  border-color: var(--violet);
+  box-shadow: 0 0 0 3px var(--violet-soft);
+}
+
+.option-row__dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+/* Colour follows the row's position, so removing a row recolours the rest. */
+.option-row:nth-child(1) .option-row__dot { background: var(--violet); }
+.option-row:nth-child(2) .option-row__dot { background: var(--pink); }
+.option-row:nth-child(3) .option-row__dot { background: var(--orange); }
+.option-row:nth-child(4) .option-row__dot { background: var(--teal); }
+.option-row:nth-child(5) .option-row__dot { background: var(--sky); }
+
+.option-row__error {
+  flex-basis: 100%;
+  padding-left: 24px;
+}
+
+.icon-button {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.icon-button:hover {
+  border-color: var(--pink);
+  color: var(--pink-ink);
+}
+
+.add-option {
+  align-self: flex-start;
+  color: var(--violet);
 }
 
 /* ---------- Toasts ---------- */

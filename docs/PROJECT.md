@@ -642,7 +642,7 @@ Claude Code her faz bitiminde burayı günceller.
 
 - [x] Faz 0 — İskelet ve temel ayarlar (2026-09-26)
 - [x] Faz 1 — Hesaplar (2026-09-29)
-- [ ] Faz 2 — Anket oluşturma ve listeleme
+- [x] Faz 2 — Anket oluşturma ve listeleme (2026-10-03)
 - [ ] Faz 3 — Oylama ve sonuçlar
 - [ ] Faz 4 — Arayüz cilası
 - [ ] Faz 5 — Supabase + Vercel yayını
@@ -664,3 +664,8 @@ Claude Code her faz bitiminde burayı günceller.
 - 2026-09-30: Yerel `.env` → `DATABASE_URL` = **session pooler** (`aws-1-eu-central-1.pooler.supabase.com:5432`); yerelde hem `runserver` hem `migrate` Supabase'e gider. Vercel'de Faz 5'te **transaction pooler** (6543) kullanılacak.
 - 2026-09-30: `manage.py test` her zaman yerel SQLite kullanır (`config/settings.py`); testler Supabase'de test veritabanı açmaz.
 - 2026-09-30: Supabase güvenliği: `public` şemasındaki tüm tablolarda RLS açık, politika yok (Data API'nin `anon`/`authenticated` rolleri hiçbir satır göremez; Django tablo sahibi `postgres` rolüyle bağlandığı için etkilenmez). `enable_rls_on_new_public_tables` event trigger'ı, sonraki Django migration'larıyla oluşan tablolarda RLS'yi otomatik açar. Security Advisor'da yalnızca beklenen INFO uyarısı ("RLS enabled, no policy") kalır.
+- 2026-10-03: Faz 2'de `polls` tabloları Supabase'e uygulandı; event trigger RLS'yi otomatik açtı.
+- 2026-10-03: `annotate(Count(...))` içeren sorgularda Django `Meta.ordering`'i uygulamaz (GROUP BY). Akış ve seçenek sorguları bu yüzden açıkça `order_by("-created_at", "-pk")` / `order_by("position")` kullanır (`polls.views.polls_with_counts`).
+- 2026-10-03: Option'a ek DB kısıtı: `position < 5` (`option_position_range`). Avatar rengi `User.avatar_color` (kullanıcı adının `crc32`'si; süreçler arasında sabit).
+- 2026-10-03: JS kapalıyken anket formu yalnızca sunucunun çizdiği 2 seçenek satırıyla çalışır (daha fazla satır `poll-form.js` ile eklenir); 2–5 kuralı yine sunucuda doğrulanır.
+- 2026-10-03: Anket silme `@login_required`: anonim kullanıcı girişe yönlenir, başkasının anketi 404.

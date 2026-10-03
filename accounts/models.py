@@ -1,3 +1,5 @@
+import zlib
+
 from django.contrib.auth.models import AbstractUser, UserManager as DjangoUserManager
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
@@ -96,3 +98,9 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+    @property
+    def avatar_color(self):
+        # Deterministic across processes (unlike hash()); matches the option colour names.
+        colors = ("violet", "pink", "orange", "teal", "sky")
+        return colors[zlib.crc32(self.username.lower().encode()) % len(colors)]

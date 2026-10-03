@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if not user.is_authenticated %}
+  <a class="join-band" href="{% url 'accounts:register' %}?next={% url 'polls:create' %}">Sen de sor! Anket açmak için ücretsiz üye ol →</a>
+{% endif %}
+
+<h1 class="page-title">Herkes bir şeye karar veremiyor 👀</h1>
+
+{% if polls %}
+  <div class="poll-list">
+    {% for poll in polls %}
+      {% include "partials/_poll_card.html" with link_question=True %}
+    {% endfor %}
+  </div>
+
+  {% if page.has_other_pages %}
+    <nav class="pagination" aria-label="Sayfalar">
+      {% if page.has_previous %}<a class="btn btn--sm" href="?sayfa={{ page.previous_page_number }}" rel="prev">← Daha yeni</a>{% endif %}
+      <span class="pagination__current">Sayfa {{ page.number }} / {{ page.paginator.num_pages }}</span>
+      {% if page.has_next %}<a class="btn btn--sm" href="?sayfa={{ page.next_page_number }}" rel="next">Daha eski →</a>{% endif %}
+    </nav>
+  {% endif %}
+{% else %}
+  <section class="hero empty-state">
+    <div class="hero__emoji" aria-hidden="true">🤔</div>
+    <p class="hero__text">Burası çok sessiz... İlk kararsızlığı sen paylaş!</p>
+    <a href="{% url 'polls:create' %}" class="btn btn--primary">Anket oluştur</a>
+  </section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Anket oluştur · Kararsızım{% endblock %}
+
+{% block content %}
+<section class="auth">
+  <div class="card auth__card auth__card--wide">
+    <h1 class="auth__title">Neye karar veremiyorsun?</h1>
+    <p class="auth__subtitle">Sorunu yaz, 2–5 seçenek ekle; gerisini herkes halletsin.</p>
+
+    <form method="post" class="form" novalidate>
+      {% csrf_token %}
+      {% include "partials/_form_errors.html" %}
+      {% include "partials/_field.html" with field=form.question %}
+      {% include "partials/_field.html" with field=form.description %}
+
+      <fieldset class="option-fields" data-option-formset data-min="{{ formset.min_num }}" data-max="{{ formset.max_num }}">
+        <legend class="field__label">Seçenekler</legend>
+        {{ formset.management_form }}
+        {% for error in formset.non_form_errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+
+        <div class="option-fields__rows" data-option-rows>
+          {% for option_form in formset %}
+            <div class="option-row" data-option-row>
+              <span class="option-row__dot" aria-hidden="true"></span>
+              {{ option_form.text }}
+              <button type="button" class="icon-button" data-remove-option aria-label="Seçeneği sil" hidden>×</button>
+              {% for error in option_form.text.errors %}<p class="field__error option-row__error">{{ error }}</p>{% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+
+        <template data-option-template>
+          <div class="option-row" data-option-row>
+            <span class="option-row__dot" aria-hidden="true"></span>
+            {{ formset.empty_form.text }}
+            <button type="button" class="icon-button" data-remove-option aria-label="Seçeneği sil">×</button>
+          </div>
+        </template>
+
+        <button type="button" class="btn btn--ghost btn--sm add-option" data-add-option hidden>+ Seçenek ekle</button>
+      </fieldset>
+
+      <button type="submit" class="btn btn--primary btn--block">Anketi yayınla</button>
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}<script src="{% static 'js/poll-form.js' %}" defer></script>{% endblock %}
