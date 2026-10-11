@@ -127,7 +127,11 @@ Gerçek değerleri (secret key, veritabanı parolası) asla repoya yazma; `.env`
    | `DATABASE_URL` | transaction pooler (6543) |
    | `DJANGO_ALLOWED_HOSTS` | `.vercel.app` (+ özel alan adı) |
    | `DJANGO_CSRF_TRUSTED_ORIGINS` | `https://<proje>.vercel.app` |
-4. **Canlıda kontrol:** kayıt, giriş, anket açma, anonim oy (gizli pencere), üye oyu, silme, statik dosyalar, 404 sayfası.
+
+   `DJANGO_SECRET_KEY` ve `DATABASE_URL` değerlerini *Sensitive* olarak işaretle. Vercel proje adı alınmışsa adrese farklı bir son ek ekler (ör. `kararsizim-rho.vercel.app`); `DJANGO_CSRF_TRUSTED_ORIGINS` için *Domains* sayfasındaki gerçek adresi yaz (birden fazlaysa virgülle ayır).
+4. **Deployment Protection:** Vercel Auth production adresini de kapatıyorsa *Settings → Deployment Protection* altında yalnızca *Preview* için açık bırak, aksi halde anonim ziyaretçiler siteyi göremez.
+5. **Yeniden deploy:** Ortam değişkenlerini değiştirdikten sonra yeniden deploy et; değişiklik yalnızca yeni deploy'larda geçerli olur.
+6. **Canlıda kontrol:** kayıt, giriş, anket açma, anonim oy (gizli pencere), üye oyu, silme, statik dosyalar, 404 sayfası.
 
 `DEBUG=False` iken HTTPS yönlendirmesi ve kısa HSTS (1 saat) açılır.
 
