@@ -645,7 +645,19 @@ Claude Code her faz bitiminde burayı günceller.
 - [x] Faz 2 — Anket oluşturma ve listeleme (2026-10-03)
 - [x] Faz 3 — Oylama ve sonuçlar (2026-10-03)
 - [x] Faz 4 — Arayüz cilası (2026-10-03)
-- [ ] Faz 5 — Supabase + Vercel yayını
+- [ ] Faz 5 — Supabase + Vercel yayını (Supabase ve Vercel-dışı işler bitti 2026-10-04; yalnızca Vercel deploy kaldı)
+
+### Devir notu — son kalınan yer (2026-10-03)
+
+- **Durum:** Faz 0–4 bitti, hepsi commit'li ve GitHub'a push'lu (`main`, son commit `9da3d9d`, repo: https://github.com/firatalcin/Kararsizim). 96 test geçiyor.
+- **Faz 5'in Supabase kısmı bitti** (proje `kararsizim-eu`, tablolar migrate edildi, RLS + event trigger). Supabase veritabanı şu an **boş** (kullanıcı/anket yok; tüm deneme verileri silindi). Kullanıcı henüz `createsuperuser` çalıştırmadı.
+- **Sıradaki iş: Faz 5'in Vercel kısmı.** Yapılacaklar:
+  1. `DJANGO_DEBUG=False DJANGO_SECRET_KEY=... python manage.py check --deploy` çalıştır, prototip için makul uyarıları düzelt (ör. HSTS, `SECURE_SSL_REDIRECT` gerekip gerekmediğine Vercel HTTPS'i zaten zorladığı için karar ver).
+  2. `DEBUG=False` iken `collectstatic` + WhiteNoise manifest'in çalıştığını yerelde doğrula.
+  3. Vercel'in bu Django projesini sıfır yapılandırmayla algıladığını doğrula (gerekirse `vercel.json`; Python 3.14 `.python-version` ile). Vercel MCP bu oturumda bağlıydı (proje oluşturma/env/deploy araçları var) — kullanıcıyla adım adım ilerle, Vercel'de işlem yapmadan önce onay al.
+  4. Vercel ortam değişkenleri: `DJANGO_SECRET_KEY` (yeni), `DJANGO_DEBUG=False`, `DATABASE_URL` = **transaction pooler** `postgresql://postgres.nlxgpagqfsuepdoyhrba:<parola>@aws-1-eu-central-1.pooler.supabase.com:6543/postgres` (parolayı kullanıcı girer, sohbete yazdırma), `DJANGO_ALLOWED_HOSTS=.vercel.app`, `DJANGO_CSRF_TRUSTED_ORIGINS=https://<proje>.vercel.app`. Vercel fonksiyon bölgesini Frankfurt'a (`fra1`) yakın seç.
+  5. README'ye "Yayına alma" bölümü; canlıda kontrol listesi (kayıt, giriş, anket, anonim oy, üye oyu, silme, statik dosyalar, 404); bitince Faz 5'i `[x]` yap.
+- **Çalışma düzeni:** Her fazdan önce kısa plan → uygula → `check` + `test` → tarayıcıda (önizleme sunucusu `django`, port 8000) dene → Supabase'de oluşturulan deneme verisini sil → bu dosyayı güncelle → özet. Commit/push yalnızca kullanıcı isteyince.
 
 ### Notlar / alınan kararlar
 <!-- Faz sırasında verilen ek kararlar buraya kısa maddelerle yazılır. -->
@@ -678,3 +690,4 @@ Claude Code her faz bitiminde burayı günceller.
 - 2026-10-03: Logodaki "?" ve favicon artık fonttan bağımsız SVG çizim. Detay sayfasında soru `h1` (kartın `question_tag` parametresi). "İçeriğe geç" bağlantısı eklendi. Seçenek kutularına `aria-label`.
 - 2026-10-03: Erişilebilirlik kontrolü Lighthouse'un kullandığı axe-core ile yapıldı (WCAG 2.1 A/AA + best-practice): akış, detay, profil, kayıt (hatalı form), anket oluştur, silme onayı → 0 ihlal. 360/390/768/masaüstü genişliklerinde yatay kaydırma yok, dokunma hedefleri ≥44px. Gerçek Lighthouse puanı yerelde Chrome DevTools'tan ölçülmeli.
 - 2026-10-03: Geliştirmede tarayıcı `main.js`'in eski sürümünü önbellekten kullanabilir (runserver önbellek kırmıyor); JS değişikliğinden sonra sert yenileme gerekir. Prod'da WhiteNoise manifest dosya adları önbelleği kendiliğinden kırar.
+- 2026-10-04: Faz 5 Vercel-dışı kısım bitti: `check --deploy` temiz (yalnızca bilinçli bırakılan HSTS subdomain/preload uyarıları), prod'da `SECURE_SSL_REDIRECT=True` + `SECURE_HSTS_SECONDS=3600` eklendi. `DEBUG=False` + `collectstatic` + manifest dosya adları yerelde doğrulandı (/, 404, giriş 200/404). README'ye "Yayına alma" yazıldı. Kalan: Vercel projesi, env değişkenleri, deploy, canlı kontrol listesi.

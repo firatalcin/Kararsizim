@@ -161,6 +161,9 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_SSL_REDIRECT = True
+    # ponytail: short HSTS while prototyping; raise to a year (+ preload) once the domain is final.
+    SECURE_HSTS_SECONDS = 3600
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
