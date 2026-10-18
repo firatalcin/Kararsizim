@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}E-postanı doğrula · Kararsızım{% endblock %}
+
+{% block content %}
+<section class="auth">
+  <div class="card auth__card">
+    <h1 class="auth__title">Önce e-postanı doğrula ✉️</h1>
+    <p class="auth__subtitle">Anket açabilmek için e-posta adresinin sana ait olduğunu doğrulaman gerekiyor. Kayıt sırasında gönderdiğimiz bağlantıya tıkla; gelmediyse yenisini isteyebilirsin. Oy vermek için doğrulama gerekmez.</p>
+    <form method="post" action="{% url 'accounts:resend_verification' %}" class="form">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{% url 'polls:create' %}">
+      <button type="submit" class="btn btn--primary btn--block">Doğrulama e-postasını tekrar gönder</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

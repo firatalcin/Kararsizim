@@ -58,5 +58,16 @@
     }
   });
 
+  // A double click on "Anketi yayınla" must not post the form twice. The button is enabled
+  // again if the browser restores the page from its back/forward cache.
+  const form = fieldset.closest("form");
+  const submitButton = form.querySelector('button[type="submit"]');
+  form.addEventListener("submit", function () {
+    submitButton.disabled = true;
+  });
+  window.addEventListener("pageshow", function () {
+    submitButton.disabled = false;
+  });
+
   refresh();
 })();

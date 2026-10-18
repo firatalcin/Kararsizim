@@ -27,11 +27,13 @@
   <div class="bg-blobs" aria-hidden="true"></div>
 
   {% include "partials/_navbar.html" %}
+  {% include "partials/_verify_banner.html" %}
 
   <main id="main" class="container" tabindex="-1">
     {% block content %}{% endblock %}
   </main>
 
+  {% include "partials/_footer.html" %}
   {% include "partials/_messages.html" %}
 
   <script src="{% static 'js/main.js' %}" defer></script>

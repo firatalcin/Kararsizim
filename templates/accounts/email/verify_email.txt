@@ -1,0 +1,8 @@
+{% autoescape off %}Merhaba @{{ user.username }},
+
+Kararsızım'a hoş geldin! E-posta adresinin sana ait olduğunu doğrulamak için şu bağlantıyı aç (3 gün geçerli):
+
+{{ url }}
+
+Bu hesabı sen açmadıysan bu e-postayı yok sayabilirsin.
+{% endautoescape %}

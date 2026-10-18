@@ -1,0 +1,11 @@
+{% if email_features_enabled and user.is_authenticated and not user.email_verified %}
+<div class="container">
+  <div class="join-band verify-band" role="status">
+    <span>E-postanı henüz doğrulamadın; anket açmak için gerekli.</span>
+    <form method="post" action="{% url 'accounts:resend_verification' %}">
+      {% csrf_token %}
+      <button type="submit" class="link-button">Doğrulama e-postasını tekrar gönder</button>
+    </form>
+  </div>
+</div>
+{% endif %}

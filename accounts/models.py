@@ -26,8 +26,13 @@ username_format_validator = RegexValidator(
 )
 
 
+# Names that look like official accounts ("kararsizim_destek", "a.d.m.i.n") are refused as well.
+RESERVED_USERNAME_PARTS = ("admin", "yonetici", "kararsizim", "destek", "moderator")
+
+
 def validate_username_not_reserved(value):
-    if value.lower() in RESERVED_USERNAMES:
+    compact = value.lower().replace("_", "").replace(".", "")
+    if compact in RESERVED_USERNAMES or any(part in compact for part in RESERVED_USERNAME_PARTS):
         raise ValidationError("Bu kullanıcı adı kullanılamaz.")
 
 
@@ -52,6 +57,7 @@ class UserManager(DjangoUserManager):
     def create_superuser(self, email, username, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("email_verified", True)
         if extra_fields.get("is_staff") is not True:
             raise ValueError("Superuser must have is_staff=True.")
         if extra_fields.get("is_superuser") is not True:
@@ -68,6 +74,9 @@ class User(AbstractUser):
         unique=True,
         error_messages={"unique": "Bu e-posta ile zaten bir hesap var."},
     )
+    # db_default keeps the column insertable for code that does not know it yet (the previous release
+    # keeps running against the new schema until the new one is deployed).
+    email_verified = models.BooleanField("e-posta doğrulandı", default=False, db_default=False)
     username = models.CharField(
         "kullanıcı adı",
         max_length=20,

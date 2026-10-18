@@ -15,7 +15,11 @@
       {% for field in form %}
         {% include "partials/_field.html" %}
       {% endfor %}
+      {% if email_features_enabled and form.email.errors %}
+        <p class="field__help">Bu e-posta sana aitse <a href="{% url 'accounts:password_reset' %}">parolanı sıfırlayarak</a> hesaba yeniden erişebilirsin.</p>
+      {% endif %}
       <button type="submit" class="btn btn--primary btn--block">Kayıt ol</button>
+      <p class="field__help">Kayıt olarak <a href="{% url 'privacy' %}">Gizlilik Bildirimi</a>'ni okuduğunu onaylarsın.</p>
     </form>
 
     <p class="auth__switch">

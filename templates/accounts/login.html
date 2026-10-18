@@ -18,6 +18,10 @@
       <button type="submit" class="btn btn--primary btn--block">Giriş yap</button>
     </form>
 
+    {% if email_features_enabled %}
+      <p class="auth__switch"><a href="{% url 'accounts:password_reset' %}">Parolanı mı unuttun?</a></p>
+    {% endif %}
+
     <p class="auth__switch">
       Hesabın yok mu?
       <a href="{% url 'accounts:register' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Kayıt ol</a>

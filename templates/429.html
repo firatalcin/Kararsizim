@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Çok fazla deneme · Kararsızım{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero__emoji" aria-hidden="true">⏳</div>
+  <h1 class="hero__title">Çok fazla deneme</h1>
+  <p class="hero__text">{{ message }} Yaklaşık {{ minutes }} dakika sonra yeniden deneyebilirsin.</p>
+  <a href="/" class="btn btn--primary">Ana sayfaya dön</a>
+</section>
+{% endblock %}

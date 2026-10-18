@@ -47,6 +47,26 @@ class RegisterForm(BaseUserCreationForm):
         return self.cleaned_data["email"].strip().lower()
 
 
+class DeleteAccountForm(forms.Form):
+    """Re-asks for the password so a hijacked session cannot wipe the account."""
+
+    password = forms.CharField(
+        label="Parolan",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "current-password"}),
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_password(self):
+        password = self.cleaned_data["password"]
+        if not self.user.check_password(password):
+            raise forms.ValidationError("Parola hatalı.")
+        return password
+
+
 class EmailLoginForm(forms.Form):
     email = forms.EmailField(
         label="E-posta",

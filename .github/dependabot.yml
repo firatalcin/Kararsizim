@@ -1,0 +1,8 @@
+# requirements.txt pins exact versions so every deploy runs what was tested.
+# Dependabot opens a weekly pull request when a newer (e.g. security-patched) release exists.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"

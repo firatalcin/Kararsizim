@@ -1,11 +1,13 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, connection
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from .models import Option, Poll, Vote
 from .services import build_results, percentages
+from .text import clean_text, fold_key, has_visible_text
 from .voter import COOKIE_NAME, get_voter_token
 
 User = get_user_model()
@@ -224,6 +226,7 @@ class FeedTests(TestCase):
                 Vote.objects.create(poll=poll, option=poll.options.first(), voter_token=f"t{poll.pk}")
 
         add_polls(5)
+        self.client.get("/")  # the first visit receives the voter cookie; measure like a returning visitor
         with_five = self.feed_query_count()
         add_polls(20)
         with self.assertNumQueries(with_five):
@@ -515,3 +518,229 @@ class CardStateTests(TestCase):
             make_poll(self.author, question=f"Ek anket {i}", options=("Bir", "İki"))
         with self.assertNumQueries(len(queries)):
             self.client.get("/")
+
+
+def limits(**overrides):
+    return {**settings.THROTTLE_LIMITS, **overrides}
+
+
+class CleanTextTests(TestCase):
+    def test_zero_width_and_bidi_control_characters_are_removed(self):
+        self.assertEqual(clean_text("Ev​et‮!"), "Evet!")
+
+    def test_emoji_sequences_keep_their_joiners(self):
+        family = "👨‍👩‍👧 aile"
+        self.assertEqual(clean_text(family), family)
+
+    def test_text_is_composed_and_whitespace_collapsed(self):
+        self.assertEqual(clean_text("  café   güzel \n mi "), "café güzel mi")
+
+    def test_multiline_keeps_line_breaks(self):
+        self.assertEqual(clean_text(" bir\niki \n", multiline=True), "bir\niki")
+
+    def test_has_visible_text(self):
+        for value in ("a", "😀", "?", "‍😀"):
+            self.assertTrue(has_visible_text(value), value)
+        for value in ("", "   ", "​", "‍", " ", "\n"):
+            self.assertFalse(has_visible_text(value), repr(value))
+
+    def test_fold_key_treats_turkish_i_variants_alike(self):
+        self.assertEqual(fold_key("Işık"), fold_key("IŞIK"))
+        self.assertEqual(fold_key("İstanbul"), fold_key("istanbul"))
+        self.assertEqual(fold_key("ISPARTA"), fold_key("Isparta"))
+        self.assertNotEqual(fold_key("Sinema"), fold_key("Restoran"))
+
+
+class PollTextCleaningTests(TestCase):
+    def setUp(self):
+        self.client.force_login(make_user())
+
+    def assertRejected(self, data, message):
+        response = self.client.post(CREATE_URL, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, message)
+        self.assertFalse(Poll.objects.exists())
+
+    def test_question_made_only_of_invisible_characters_is_rejected(self):
+        self.assertRejected(poll_data(question="​" * 6), "Soru boş görünüyor.")
+
+    def test_question_too_short_once_invisible_characters_are_gone_is_rejected(self):
+        self.assertRejected(poll_data(question="Ne?​​"), "Soru en az 5 karakter olmalı.")
+
+    def test_option_made_only_of_invisible_characters_is_rejected(self):
+        self.assertRejected(poll_data(options=("Sinema", "​")), "Seçenek boş görünüyor.")
+
+    def test_options_that_differ_only_by_invisible_characters_are_duplicates(self):
+        self.assertRejected(poll_data(options=("Evet", "Ev​et")), "Aynı seçeneği iki kez yazmışsın.")
+
+    def test_turkish_case_variants_are_duplicates(self):
+        self.assertRejected(poll_data(options=("Işık", "IŞIK")), "Aynı seçeneği iki kez yazmışsın.")
+        self.assertRejected(poll_data(options=("İstanbul", "istanbul")), "Aynı seçeneği iki kez yazmışsın.")
+
+    def test_stored_text_is_cleaned(self):
+        data = poll_data(question="  Hafta​ sonu  nereye?  ", description="​", options=("Deniz‮", "Dağ"))
+        self.client.post(CREATE_URL, data)
+        poll = Poll.objects.get()
+        self.assertEqual(poll.question, "Hafta sonu nereye?")
+        self.assertEqual(poll.description, "")
+        self.assertEqual(list(poll.options.values_list("text", flat=True)), ["Deniz", "Dağ"])
+
+
+class ResultsHiddenTests(TestCase):
+    """Percentages must not be in the HTML of someone who may not see them yet."""
+
+    def setUp(self):
+        self.author = make_user("sahip")
+        self.poll = make_poll(self.author, options=("Sinema", "Restoran"))
+        self.sinema = self.poll.options.first()
+        Vote.objects.create(poll=self.poll, option=self.sinema, voter_token="baskasi")
+        self.url = self.poll.get_absolute_url()
+
+    def test_visitor_who_has_not_voted_gets_no_percentages(self):
+        for url in (self.url, "/", "/u/sahip/"):
+            with self.subTest(url=url):
+                self.assertNotContains(self.client.get(url), "--percent")
+
+    def test_owner_and_voters_do_get_them(self):
+        self.client.force_login(self.author)
+        self.assertContains(self.client.get(self.url), "--percent: 100%")
+        voter = self.client_class()
+        voter.post(reverse("polls:vote", args=[self.poll.pk]), {"option_id": self.sinema.pk})
+        self.assertContains(voter.get(self.url), "--percent: 100%")
+
+
+class VoterCookieTests(TestCase):
+    def setUp(self):
+        self.poll = make_poll(make_user("sahip"))
+
+    def test_anonymous_visitor_gets_the_cookie_together_with_the_vote_forms(self):
+        for url in ("/", self.poll.get_absolute_url(), "/u/sahip/"):
+            with self.subTest(url=url):
+                cookie = self.client_class().get(url).cookies[COOKIE_NAME]
+                self.assertTrue(cookie["httponly"])
+                self.assertEqual(cookie["samesite"], "Lax")
+
+    def test_cookie_is_not_issued_again(self):
+        self.client.get("/")
+        self.assertNotIn(COOKIE_NAME, self.client.get("/").cookies)
+
+    def test_members_do_not_get_the_cookie(self):
+        self.client.force_login(make_user("uye"))
+        self.assertNotIn(COOKIE_NAME, self.client.get("/").cookies)
+
+    def test_the_first_vote_uses_the_token_from_the_page_view(self):
+        """Two requests racing before any cookie exists must share one token, so one of them gets a 409."""
+        self.client.get(self.poll.get_absolute_url())
+        request = RequestFactory().get("/")
+        request.COOKIES[COOKIE_NAME] = self.client.cookies[COOKIE_NAME].value
+        token = get_voter_token(request)
+
+        option = self.poll.options.first()
+        url = reverse("polls:vote", args=[self.poll.pk])
+        statuses = [self.client.post(url, {"option_id": option.pk}).status_code for _ in range(2)]
+        self.assertEqual(statuses, [302, 302])  # without JS: redirect with a message either way
+        self.assertEqual(list(Vote.objects.values_list("voter_token", flat=True)), [token])
+
+
+class MemberAfterAnonymousVoteTests(TestCase):
+    """Logging in must not give the same browser a second vote on a poll it already voted on."""
+
+    def setUp(self):
+        self.poll = make_poll(make_user("sahip"), options=("Sinema", "Restoran"))
+        self.sinema, self.restoran = self.poll.options.all()
+        self.url = reverse("polls:vote", args=[self.poll.pk])
+        self.client.post(self.url, {"option_id": self.sinema.pk})  # anonymous vote, cookie stored
+        self.member = make_user("uye")
+
+    def test_member_in_the_same_browser_cannot_vote_again(self):
+        self.client.force_login(self.member)
+        response = self.client.post(self.url, {"option_id": self.restoran.pk}, headers={"Accept": "application/json"})
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["voted_option_id"], self.sinema.pk)
+        self.assertEqual(Vote.objects.count(), 1)
+
+    def test_card_shows_the_earlier_vote(self):
+        self.client.force_login(self.member)
+        page = self.client.get(self.poll.get_absolute_url())
+        self.assertNotContains(page, 'name="option_id"')
+        self.assertContains(page, "option--chosen")
+
+    def test_member_in_another_browser_is_unaffected(self):
+        other = self.client_class()
+        other.force_login(self.member)
+        response = other.post(self.url, {"option_id": self.restoran.pk}, headers={"Accept": "application/json"})
+        self.assertEqual(response.status_code, 200)
+
+    def test_members_own_vote_wins_over_the_anonymous_one_on_the_card(self):
+        other = self.client_class()
+        other.force_login(self.member)
+        other.post(self.url, {"option_id": self.restoran.pk})
+        other.cookies[COOKIE_NAME] = self.client.cookies[COOKIE_NAME].value
+        page = other.get(self.poll.get_absolute_url())
+        self.assertEqual(page.context["poll"].voted_option_id, self.restoran.pk)
+
+
+@override_settings(THROTTLE_ENABLED=True)
+class VoteThrottleTests(TestCase):
+    def setUp(self):
+        author = make_user("sahip")
+        self.polls = [make_poll(author, question=f"Anket numarası {i}") for i in range(3)]
+
+    def vote(self, poll, client=None):
+        return (client or self.client_class()).post(
+            reverse("polls:vote", args=[poll.pk]),
+            {"option_id": poll.options.first().pk},
+            headers={"Accept": "application/json"},
+        )
+
+    @override_settings(THROTTLE_LIMITS=limits(vote=(2, 600)))
+    def test_anonymous_visitors_share_a_per_ip_limit(self):
+        responses = [self.vote(poll) for poll in self.polls]
+        self.assertEqual([r.status_code for r in responses], [200, 200, 429])
+        self.assertEqual(responses[2].json()["ok"], False)
+        self.assertNotIn(COOKIE_NAME, responses[2].cookies)
+        self.assertEqual(Vote.objects.count(), 2)
+
+    @override_settings(THROTTLE_LIMITS=limits(vote=(2, 600)))
+    def test_members_are_counted_per_account_not_per_ip(self):
+        first, second = self.client_class(), self.client_class()
+        first.force_login(make_user("bir"))
+        second.force_login(make_user("iki"))
+        self.assertEqual([self.vote(p, first).status_code for p in self.polls], [200, 200, 429])
+        self.assertEqual(self.vote(self.polls[0], second).status_code, 200)
+
+    @override_settings(THROTTLE_LIMITS=limits(**{"vote-poll": (1, 3600)}))
+    def test_limit_per_poll(self):
+        self.assertEqual(self.vote(self.polls[0]).status_code, 200)
+        self.assertEqual(self.vote(self.polls[0]).status_code, 429)
+        self.assertEqual(self.vote(self.polls[1]).status_code, 200)
+
+
+@override_settings(THROTTLE_ENABLED=True, THROTTLE_LIMITS=limits(**{"poll-create": (2, 3600)}))
+class PollCreateThrottleTests(TestCase):
+    def test_members_can_only_open_so_many_polls_per_hour(self):
+        self.client.force_login(make_user())
+        statuses = [self.client.post(CREATE_URL, poll_data(question=f"Anket numarası {i}")).status_code for i in range(3)]
+        self.assertEqual(statuses, [302, 302, 429])
+        self.assertEqual(Poll.objects.count(), 2)
+
+    def test_anonymous_visitors_are_sent_to_login_without_using_up_the_limit(self):
+        for _ in range(5):
+            self.assertEqual(self.client.post(CREATE_URL, poll_data()).status_code, 302)
+
+
+class PollCreateDoubleSubmitTests(TestCase):
+    def test_the_same_question_twice_in_a_row_is_one_poll(self):
+        self.client.force_login(make_user())
+        first = self.client.post(CREATE_URL, poll_data(question="Çift tıklanan anket"))
+        second = self.client.post(CREATE_URL, poll_data(question="Çift tıklanan anket"))
+        self.assertEqual(Poll.objects.count(), 1)
+        self.assertEqual(first["Location"], second["Location"])
+        self.assertEqual(Option.objects.count(), 2)
+
+    def test_same_question_from_another_member_is_a_new_poll(self):
+        self.client.force_login(make_user("bir"))
+        self.client.post(CREATE_URL, poll_data(question="Aynı soru"))
+        self.client.force_login(make_user("iki"))
+        self.client.post(CREATE_URL, poll_data(question="Aynı soru"))
+        self.assertEqual(Poll.objects.count(), 2)

@@ -67,12 +67,14 @@ Kullanıcı her seferinde tek bir faz ister, örneğin:
 ### Bağımlılıklar (`requirements.txt`)
 
 ```
-Django>=5.2,<5.3
-psycopg[binary]>=3.2
-dj-database-url>=2.2
-python-dotenv>=1.0
-whitenoise>=6.7
+Django==5.2.18
+psycopg[binary]==3.3.6
+dj-database-url==3.1.2
+python-dotenv==1.2.4
+whitenoise==6.12.0
 ```
+
+Sürümler (2026-10-18'den beri) tam olarak sabittir; böylece her deploy test edilen sürümü çalıştırır. `.github/dependabot.yml` haftalık güncelleme PR'ı açar; güvenlik yamaları için bu PR'ları gözden geçir.
 
 Bunun dışında paket eklemek için kullanıcıya sor.
 
@@ -93,9 +95,12 @@ kararsizim/
 ├── config/                    # Django proje paketi
 │   ├── __init__.py
 │   ├── settings.py
+│   ├── middleware.py          # CSP ve Permissions-Policy başlıkları
 │   ├── urls.py
+│   ├── tests.py               # ayar ve başlık testleri
 │   └── wsgi.py                # `application` değişkeni
-├── accounts/                  # kullanıcı modeli, kayıt / giriş / çıkış, profil
+├── core/                      # ortak: hız sınırı (throttle.py, ThrottleBucket modeli) ve Supabase yetki migration'ı
+├── accounts/                  # kullanıcı modeli, kayıt / giriş / çıkış, profil, parola sıfırlama, e-posta doğrulama (emails.py), hesap silme
 │   ├── models.py
 │   ├── forms.py
 │   ├── views.py
@@ -107,6 +112,7 @@ kararsizim/
 │   ├── forms.py
 │   ├── services.py            # oy verme mantığı, sonuç hesaplama
 │   ├── voter.py               # anonim ziyaretçi kimliği (çerez) yardımcıları
+│   ├── text.py                # anket metni temizliği (görünmez karakterler, Türkçe i karşılaştırması)
 │   ├── views.py
 │   ├── urls.py
 │   ├── admin.py
@@ -301,8 +307,8 @@ Ortam değişkenleriyle yönetilir; `manage.py` başında `load_dotenv()` çağr
 | Değişken | Yerel varsayılan | Açıklama |
 |---|---|---|
 | `DJANGO_SECRET_KEY` | geliştirme için sabit bir dev anahtarı | Prod'da zorunlu. `DEBUG=False` iken tanımlı değilse uygulama hata vermeli. |
-| `DJANGO_DEBUG` | `True` | Prod'da `False`. |
-| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1,.vercel.app` | Virgülle ayrılmış. |
+| `DJANGO_DEBUG` | `False` (testlerde `True`) | Yalnızca yerel geliştirmede `True` (`.env`). Vercel'de `True` ise uygulama açılmaz. (2026-10-18: varsayılan güvenli tarafa çevrildi.) |
+| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Virgülle ayrılmış. Canlıda tam alan adı; `.vercel.app` joker karakteri yalnızca önizleme dağıtımları için. |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | boş | Örn. `https://kararsizim.vercel.app` |
 | `DATABASE_URL` | tanımsız → SQLite | Supabase **Transaction pooler** bağlantı dizesi (port 6543). |
 
@@ -596,7 +602,7 @@ Her faz tek başına çalışır durumda bitmelidir. Önerilen sıra 0 → 5. Fa
    - `DJANGO_SECRET_KEY` (yeni, uzun, rastgele)
    - `DJANGO_DEBUG=False`
    - `DATABASE_URL` (transaction pooler, 6543)
-   - `DJANGO_ALLOWED_HOSTS=.vercel.app` (+ varsa özel alan adı)
+   - `DJANGO_ALLOWED_HOSTS=<proje-adi>.vercel.app` (+ varsa özel alan adı; `.vercel.app` joker karakteri yalnızca Preview ortamı için)
    - `DJANGO_CSRF_TRUSTED_ORIGINS=https://<proje-adi>.vercel.app`
 5. Deploy et.
 
@@ -645,6 +651,7 @@ Claude Code her faz bitiminde burayı günceller.
 - [x] Faz 2 — Anket oluşturma ve listeleme (2026-10-03)
 - [x] Faz 3 — Oylama ve sonuçlar (2026-10-03)
 - [x] Faz 4 — Arayüz cilası (2026-10-03)
+- [x] Güvenlik incelemesi düzeltmeleri (2026-10-18) — ayrıntı "Notlar" bölümünde
 - [ ] Faz 5 — Supabase + Vercel yayını (Supabase ve Vercel-dışı işler bitti 2026-10-04; yalnızca Vercel deploy kaldı)
 
 ### Devir notu — son kalınan yer (2026-10-03)
@@ -655,7 +662,7 @@ Claude Code her faz bitiminde burayı günceller.
   1. `DJANGO_DEBUG=False DJANGO_SECRET_KEY=... python manage.py check --deploy` çalıştır, prototip için makul uyarıları düzelt (ör. HSTS, `SECURE_SSL_REDIRECT` gerekip gerekmediğine Vercel HTTPS'i zaten zorladığı için karar ver).
   2. `DEBUG=False` iken `collectstatic` + WhiteNoise manifest'in çalıştığını yerelde doğrula.
   3. Vercel'in bu Django projesini sıfır yapılandırmayla algıladığını doğrula (gerekirse `vercel.json`; Python 3.14 `.python-version` ile). Vercel MCP bu oturumda bağlıydı (proje oluşturma/env/deploy araçları var) — kullanıcıyla adım adım ilerle, Vercel'de işlem yapmadan önce onay al.
-  4. Vercel ortam değişkenleri: `DJANGO_SECRET_KEY` (yeni), `DJANGO_DEBUG=False`, `DATABASE_URL` = **transaction pooler** `postgresql://postgres.nlxgpagqfsuepdoyhrba:<parola>@aws-1-eu-central-1.pooler.supabase.com:6543/postgres` (parolayı kullanıcı girer, sohbete yazdırma), `DJANGO_ALLOWED_HOSTS=.vercel.app`, `DJANGO_CSRF_TRUSTED_ORIGINS=https://<proje>.vercel.app`. Vercel fonksiyon bölgesini Frankfurt'a (`fra1`) yakın seç.
+  4. Vercel ortam değişkenleri: `DJANGO_SECRET_KEY` (yeni), `DJANGO_DEBUG=False`, `DATABASE_URL` = **transaction pooler** `postgresql://postgres.nlxgpagqfsuepdoyhrba:<parola>@aws-1-eu-central-1.pooler.supabase.com:6543/postgres` (parolayı kullanıcı girer, sohbete yazdırma), `DJANGO_ALLOWED_HOSTS=<proje>.vercel.app` (tam alan adı; 2026-10-18'den beri `.vercel.app` varsayılanı yok), `DJANGO_CSRF_TRUSTED_ORIGINS=https://<proje>.vercel.app`. Ayrıca bkz. 2026-10-18 notları: önce `migrate` (yeni migration'lar var). Vercel fonksiyon bölgesini Frankfurt'a (`fra1`) yakın seç.
   5. README'ye "Yayına alma" bölümü; canlıda kontrol listesi (kayıt, giriş, anket, anonim oy, üye oyu, silme, statik dosyalar, 404); bitince Faz 5'i `[x]` yap.
 - **Çalışma düzeni:** Her fazdan önce kısa plan → uygula → `check` + `test` → tarayıcıda (önizleme sunucusu `django`, port 8000) dene → Supabase'de oluşturulan deneme verisini sil → bu dosyayı güncelle → özet. Commit/push yalnızca kullanıcı isteyince.
 
@@ -691,3 +698,17 @@ Claude Code her faz bitiminde burayı günceller.
 - 2026-10-03: Erişilebilirlik kontrolü Lighthouse'un kullandığı axe-core ile yapıldı (WCAG 2.1 A/AA + best-practice): akış, detay, profil, kayıt (hatalı form), anket oluştur, silme onayı → 0 ihlal. 360/390/768/masaüstü genişliklerinde yatay kaydırma yok, dokunma hedefleri ≥44px. Gerçek Lighthouse puanı yerelde Chrome DevTools'tan ölçülmeli.
 - 2026-10-03: Geliştirmede tarayıcı `main.js`'in eski sürümünü önbellekten kullanabilir (runserver önbellek kırmıyor); JS değişikliğinden sonra sert yenileme gerekir. Prod'da WhiteNoise manifest dosya adları önbelleği kendiliğinden kırar.
 - 2026-10-04: Faz 5 Vercel-dışı kısım bitti: `check --deploy` temiz (yalnızca bilinçli bırakılan HSTS subdomain/preload uyarıları), prod'da `SECURE_SSL_REDIRECT=True` + `SECURE_HSTS_SECONDS=3600` eklendi. `DEBUG=False` + `collectstatic` + manifest dosya adları yerelde doğrulandı (/, 404, giriş 200/404). README'ye "Yayına alma" yazıldı. Kalan: Vercel projesi, env değişkenleri, deploy, canlı kontrol listesi.
+- 2026-10-18: Güvenlik/kullanıcı etkisi incelemesinin bulguları kullanıcının isteğiyle düzeltildi (kod + testler, 214 test). Alınan kararlar:
+  - `DJANGO_DEBUG` varsayılanı `False`; testlerde `True`. Vercel'de (`VERCEL` env) `DEBUG=True` ise açılış reddedilir. Yerel geliştirme için `.env` içinde `DJANGO_DEBUG=True` gerekir (`.env.example`'da var). `ALLOWED_HOSTS` varsayılanından `.vercel.app` kaldırıldı.
+  - Hız sınırı: yeni `core` uygulaması, veritabanında atomik sabit-pencere sayaçları (`core.ThrottleBucket`, anahtarlı HMAC; IP/e-posta saklanmaz), ek paket yok. Oranlar `settings.THROTTLE_LIMITS`; testlerde kapalı (`THROTTLE_ENABLED`), throttle testleri açıkça açar. İstemci IP'si: Vercel'de `X-Forwarded-For` (Vercel yeniden yazar), diğer yerlerde `REMOTE_ADDR`; IPv6 /64'e indirgenir. Süresi dolan sayaçlar ve oturumlar (`django_session`) istek sırasında %2 olasılıkla silinir (`core.throttle.purge_expired`).
+  - Oy bütünlüğü: anonim ziyaretçi çerezi artık oy anında değil sayfa gösterilirken (feed/detay/profil) verilir; üyenin aynı tarayıcıdaki anonim oyu üyelikte de sayılır (`services.cast_vote(browser_token=…)`, `get_user_votes`). Bilinçli sınır: üye oyu → çıkış → anonim oy ve çerezsiz/çok IP'li saldırı engellenmez, yalnızca yavaşlatılır.
+  - Sonuç yüzdeleri oy vermemiş (ve sahibi olmayan) ziyaretçinin HTML'ine hiç yazılmaz (`prepare_cards`, `_poll_card.html`).
+  - Anket metni: `polls/text.py` (NFC, görünmez/bidi karakter temizliği, ZWJ emoji korunur, boş görünen metin reddi, Türkçe i/ı duyarlı tekrar kontrolü). Kullanıcı adı: yasaklı kelimeler uzun adların içinde de reddedilir (`admin`, `yonetici`, `kararsizim`, `destek`, `moderator`; `_` ve `.` yok sayılır).
+  - E-posta özellikleri (parola sıfırlama, e-posta doğrulama) Django'nun yerleşik araçlarıyla yazıldı ve **SMTP tanımlanınca** (`EMAIL_HOST`) açılır (`settings.EMAIL_FEATURES_ENABLED`); kapalıyken kimse engellenmez. Açıkken doğrulanmamış üyeler anket açamaz (oy verebilir). `User.email_verified` (migration `accounts.0002`); superuser'lar doğrulanmış açılır; parola sıfırlama adresin sahibini doğrulanmış sayar ve başkasının e-postasını sahiplenen hesabı geri almanın yoludur.
+  - Gizlilik: `/gizlilik/` bildirimi (taslak, hukuki gözden geçirme gerekir), parola ile onaylanan `/hesap/sil/`, footer. Google Fonts hâlâ Google'dan yükleniyor (kendi sunucuya almak için font dosyalarını indirmek gerekir; kullanıcı onayı bekliyor) — CSP bu yüzden `fonts.googleapis.com` / `fonts.gstatic.com`'a izin verir.
+  - CSP + `Permissions-Policy` (`config/middleware.py`; `/admin/` hariç); `script-src 'self'` olduğu için sayfalarda satır içi script/olay işleyici olmamalı (`config.tests` bunu denetler).
+  - HSTS, `DJANGO_HSTS_*` ile ayarlanabilir; varsayılan bilinçli olarak kısa (3600 sn) bırakıldı (tarayıcılar HSTS'i hatırlar, alan adı kesinleşmeden bir yıl taahhüt edilmez). DB TLS doğrulaması `DJANGO_DB_SSLMODE`/`DJANGO_DB_SSLROOTCERT` ile açılabilir.
+  - `core.0002` migration'ı Supabase'te `anon`/`authenticated` rollerinin tablo yetkilerini kaldırır (yalnızca bu roller varsa; SQLite'ta etkisiz). SQL gerçek Supabase projesinde geri alınan bir `DO` bloğuyla doğrulandı; gerçek uygulama `migrate` ile olur.
+  - Bağımlılıklar tam sürüme sabitlendi + Dependabot. Anket oluştururken çift tıklama: JS düğmeyi kapatır, sunucu 60 sn içindeki aynı soruyu tekrar oluşturmaz. Kayıtta kullanıcı adı/e-posta yarışı 500 yerine form hatası verir.
+  - **Supabase'e uygulandı (2026-10-18):** `accounts.0002`, `core.0001`, `core.0002`; `.env`/parola bu makinede olmadığı için `manage.py migrate` yerine Supabase MCP `apply_migration` ile, Django'nun PostgreSQL için ürettiği DDL (+ `django_migrations` kayıtları) tek işlemde çalıştırıldı. `migrate` artık "uygulanacak migration yok" demeli. Doğrulandı: 23 kayıt, `core_throttlebucket` (RLS otomatik açıldı, sahibi `postgres`), tüm 14 tabloda `anon`/`authenticated` yetkisiz, mevcut veri (1 kullanıcı, 1 anket, 2 oy) sağlam. Mevcut kullanıcının `email_verified` değeri `false` (SMTP açılınca doğrulaması gerekir). **Ders:** canlıda eski kod çalışırken yeni sürümün şeması uygulanırsa, yeni `NOT NULL` sütunun eski kodun INSERT'lerini kırmaması için `db_default` gerekir; ilk uygulamada bu yoktu, Vercel'deki canlı kayıt akışı kısa süre kırık kaldı ve sütuna `DEFAULT false` eklenerek düzeltildi (`email_verified` artık `db_default=False`, migration ve test buna göre güncellendi).
+  - Düzeltilmeyenler (kasıtlı): her feed görüntülemesinde oy sayımı (§4.5 kararı; hız sınırları büyümeyi sınırlar, gerekirse sayaç alanı eklenir). Panel ayarları (Supabase Data API/GraphQL kapatma, Network Restrictions, DB parolası gücü, Vercel ayarları) kodla yapılamaz, README'de listelendi.

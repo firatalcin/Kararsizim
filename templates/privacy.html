@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Gizlilik Bildirimi · Kararsızım{% endblock %}
+{% block meta_description %}Kararsızım hangi verileri saklıyor, neden ve nasıl silebilirsin.{% endblock %}
+
+{# Draft written from what the code stores. Have it reviewed (KVKK aydınlatma metni) before relying on it. #}
+{% block content %}
+<article class="card prose">
+  <h1 class="page-title">Gizlilik Bildirimi</h1>
+  <p>Kararsızım, kullanıcıların hızlıca anket açıp oy verdiği bir prototiptir. Bu sayfa hangi verileri neden sakladığımızı anlatır.</p>
+
+  <h2>Hangi verileri saklıyoruz?</h2>
+  <ul>
+    <li><strong>Hesap:</strong> e-posta adresin, kullanıcı adın ve parolan. Parola yalnızca geri döndürülemez bir özet olarak saklanır; biz bile göremeyiz.</li>
+    <li><strong>İçerik:</strong> açtığın anketler ve verdiğin oylar. Anketlerde yalnızca kullanıcı adın görünür; e-postan kimseye gösterilmez ve kimin hangi seçeneğe oy verdiği başkalarına gösterilmez.</li>
+    <li><strong>Anonim oylar:</strong> üye olmadan oy verirsen, aynı ankete ikinci kez oy verilmesin diye tarayıcına rastgele bir ziyaretçi kodu yazılır. Bu kod seni kimliğinle ilişkilendirmez.</li>
+    <li><strong>IP adresi:</strong> uygulama IP adresini veri tabanında saklamaz. Kötüye kullanımı önleyen hız sınırı, IP adresinden üretilen anahtarlı ve geri çözülemez bir kodu kısa bir zaman penceresi (en fazla bir saat) için sayaç olarak kullanır; süresi dolan kayıtlar düzenli olarak silinir. Barındırma sağlayıcısı kendi sunucu kayıtlarında IP adresi tutabilir.</li>
+  </ul>
+
+  <h2>Çerezler</h2>
+  <p>Yalnızca sitenin çalışması için gereken çerezleri kullanırız; reklam veya izleme çerezi yoktur.</p>
+  <ul>
+    <li><code>sessionid</code>: giriş yaptığını hatırlar.</li>
+    <li><code>csrftoken</code>: formların başkası tarafından sahte olarak gönderilmesini engeller.</li>
+    <li><code>kz_voter</code>: anonim ziyaretçi kodu (1 yıl).</li>
+    <li><code>messages</code>: “Oyun kaydedildi” gibi kısa bildirimleri taşır, hemen silinir.</li>
+  </ul>
+
+  <h2>Verileri kimlerle paylaşıyoruz?</h2>
+  <ul>
+    <li><strong>Supabase:</strong> veri tabanı (Frankfurt, Avrupa Birliği).</li>
+    <li><strong>Vercel:</strong> web sitesinin barındırılması.</li>
+    <li><strong>Google Fonts:</strong> yazı tipleri; sayfayı açtığında IP adresin Google'a ulaşır.</li>
+    {% if email_features_enabled %}<li><strong>E-posta sağlayıcısı:</strong> doğrulama ve parola sıfırlama e-postalarını gönderir.</li>{% endif %}
+  </ul>
+  <p>Verilerin satılmaz ve reklam amacıyla kullanılmaz.</p>
+
+  <h2>Verilerini silmek</h2>
+  <p>Giriş yaptıysan <a href="{% url 'accounts:delete' %}">Hesabımı sil</a> sayfasından hesabını istediğin zaman silebilirsin. Hesabınla birlikte e-postan, anketlerin ve oyların kalıcı olarak silinir.</p>
+
+  <h2>Dikkat edilmesi gerekenler</h2>
+  <p>Anket sorularında ve seçeneklerde başkalarının kişisel bilgilerini; sağlık, din, siyasi görüş gibi hassas bilgileri paylaşma. Anketler herkese açıktır.</p>
+
+  {% if contact_email %}
+  <h2>İletişim ve haklarının kullanımı</h2>
+  <p>Verilerine erişmek, düzeltmek ya da silmek (KVKK madde 11 ve GDPR kapsamındaki haklarını kullanmak) için <a href="mailto:{{ contact_email }}">{{ contact_email }}</a> adresine yazabilirsin.</p>
+  {% endif %}
+</article>
+{% endblock %}

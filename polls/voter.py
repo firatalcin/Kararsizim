@@ -22,6 +22,17 @@ def ensure_voter_token(request):
     return uuid.uuid4().hex, True
 
 
+def ensure_voter_cookie(request, response):
+    """Hand anonymous visitors their cookie together with the vote forms.
+
+    Issuing it when the page is shown (not when the vote is cast) means two vote requests that race
+    before the first response arrives still carry the same token, so only one of them counts.
+    """
+    if not request.user.is_authenticated and get_voter_token(request) is None:
+        set_voter_cookie(response, uuid.uuid4().hex)
+    return response
+
+
 def set_voter_cookie(response, token):
     response.set_signed_cookie(
         COOKIE_NAME,

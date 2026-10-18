@@ -22,7 +22,7 @@
       {% for option in poll.options.all %}
         <button type="submit" name="option_id" value="{{ option.pk }}"
                 class="option option--{{ option.color }}{% if poll.show_results %} option--result{% endif %}"
-                style="--percent: {{ option.percent }}%" data-option-id="{{ option.pk }}" data-color="{{ option.color }}">
+                {% if poll.show_results %}style="--percent: {{ option.percent }}%" {% endif %}data-option-id="{{ option.pk }}" data-color="{{ option.color }}">
           {% include "partials/_option_body.html" %}
         </button>
       {% endfor %}
